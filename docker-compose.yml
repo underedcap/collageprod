@@ -1,0 +1,41 @@
+version: '3.9'
+
+services:
+
+  mysql:
+    image: mysql:8
+    container_name: vpn_mysql
+    restart: always
+
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: vpn_db
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./dev/db/config:/docker-entrypoint-initdb.d
+
+  backend:
+    build: ./backend
+    container_name: vpn_backend
+    restart: always
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      - mysql
+
+  bot:
+    build: ./bot
+    container_name: vpn_bot
+    restart: always
+
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
