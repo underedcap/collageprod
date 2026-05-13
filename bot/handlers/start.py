@@ -1,9 +1,15 @@
 from aiogram import Router
+from aiogram.filters import CommandStart
 from aiogram.types import Message
-from aiogram.filters import Command
+
+from keyboards.main_menu import main_menu_kb
 
 router = Router()
 
-@router.message(Command("start"))
+
+@router.message(CommandStart())
 async def start_handler(message: Message):
-    await message.answer(👋"Привет! Это hex vpn конфиги.")
+    await message.answer(
+        "👋 Привет! Это hex vpn конфиги.",
+        reply_markup=main_menu_kb()
+    )

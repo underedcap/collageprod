@@ -1,17 +1,19 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.types import Message
-from aiogram.filters import Text
 
 router = Router()
 
-@router.message(Text(text="🛡 Тарифы"))
-async def tariffs_handler(message: Message):
-    await message.answer("Тарифы:\n1. Basic — 350 RUB\n2. Pro — 800 RUB")
 
-@router.message(Text(text="💳 Купить VPN"))
-async def buy_vpn_handler(message: Message):
-    await message.answer("Выберите тариф:\n• Basic\n• Pro")
+@router.message(F.text == "🛡 Тарифы")
+async def tariffs(message: Message):
+    await message.answer("💰 Тарифы:\n- 1 месяц\n- 3 месяца\n- 12 месяцев")
 
-@router.message(Text(text="📦 Мои заказы"))
-async def orders_handler(message: Message):
-    await message.answer("У вас пока нет заказов")
+
+@router.message(F.text == "💳 Купить VPN")
+async def buy(message: Message):
+    await message.answer("💳 Оплата пока в разработке")
+
+
+@router.message(F.text == "📦 Мои заказы")
+async def orders(message: Message):
+    await message.answer("📦 У вас пока нет заказов")

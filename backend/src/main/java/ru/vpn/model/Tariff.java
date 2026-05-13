@@ -1,12 +1,14 @@
-package ru.vpn.entity;
+package ru.vpn.model;
 
 import jakarta.persistence.*;
-
-import lombok.Data;
+import lombok.*;
 
 @Entity
 @Table(name = "tariffs")
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Tariff {
 
     @Id
@@ -14,8 +16,6 @@ public class Tariff {
     private Long id;
 
     private String name;
-
-    private Integer price;
-
-    private Integer durationDays;
+    private int price;
+    private int durationDays;
 }

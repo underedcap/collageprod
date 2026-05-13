@@ -1,7 +1,4 @@
-version: '3.9'
-
 services:
-
   mysql:
     image: mysql:8
     container_name: vpn_mysql
@@ -16,18 +13,23 @@ services:
 
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./dev/db/config:/docker-entrypoint-initdb.d
 
   backend:
     build: ./backend
     container_name: vpn_backend
     restart: always
 
+    depends_on:
+      - mysql
+
     ports:
       - "8080:8080"
 
-    depends_on:
-      - mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/vpn_db?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
   bot:
     build: ./bot
