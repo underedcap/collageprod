@@ -1,34 +1,21 @@
+version: '3.8'
+
 services:
-  mysql:
-    image: mysql:8
-    container_name: vpn_mysql
-    restart: always
-
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: vpn_db
-
-    ports:
-      - "3307:3306"
-
-    volumes:
-      - mysql_data:/var/lib/mysql
-
   backend:
     build: ./backend
     container_name: vpn_backend
     restart: always
 
-    depends_on:
-      - mysql
-
     ports:
       - "8080:8080"
 
+    volumes:
+      - ./db/config:/app/db/config
+
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/vpn_db?allowPublicKeyRetrieval=true&useSSL=false
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:sqlite:/app/db/config/vpn_db.sqlite
+      SPRING_DATASOURCE_USERNAME: ""
+      SPRING_DATASOURCE_PASSWORD: ""
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
   bot:
@@ -39,5 +26,5 @@ services:
     depends_on:
       - backend
 
-volumes:
-  mysql_data:
+    environment:
+      BACKEND_URL: http://backend:8080

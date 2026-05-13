@@ -16,7 +16,7 @@
     <orderEntry type="module" module-name="vpn-backend.main" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-web:3.3.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-data-jpa:3.3.1" level="project" />
-    <orderEntry type="library" name="Gradle: com.mysql:mysql-connector-j:8.0.33" level="project" />
+    <orderEntry type="library" name="Gradle: org.xerial:sqlite-jdbc:3.42.0.0" level="project" />
     <orderEntry type="library" name="Gradle: org.projectlombok:lombok:1.18.32" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-test:3.3.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-json:3.3.1" level="project" />

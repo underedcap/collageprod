@@ -2,47 +2,37 @@ import aiohttp
 from config import BACKEND_URL
 
 
-async def get_tariffs():
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{BACKEND_URL}/tariffs") as response:
-                if response.status == 200:
-                    return await response.json()
-    except Exception as e:
-        print(e)
-
-    return []
-
-
-async def create_order(telegram_id, tariff_name):
+async def create_user(telegram_id, username):
     data = {
         "telegramId": telegram_id,
-        "tariffName": tariff_name
+        "username": username,
+        "tariffName": "",
+        "durationDays": 0
     }
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{BACKEND_URL}/orders/create",
-                json=data
-            ) as response:
-                if response.status == 200:
-                    return "✅ Заказ создан"
+            async with session.post(f"{BACKEND_URL}/users/subscribe", json=data) as response:
+                return True
     except Exception as e:
         print(e)
+    return False
 
-    return "❌ Ошибка создания заказа"
 
+async def subscribe_user(telegram_id, username, tariff_name, duration_days):
+    data = {
+        "telegramId": telegram_id,
+        "username": username,
+        "tariffName": tariff_name,
+        "durationDays": duration_days
+    }
 
-async def get_user_orders(telegram_id):
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{BACKEND_URL}/orders/user/{telegram_id}"
-            ) as response:
+            async with session.post(f"{BACKEND_URL}/users/subscribe", json=data) as response:
                 if response.status == 200:
-                    return await response.json()
+                    return await response.text()
     except Exception as e:
         print(e)
 
-    return []
+    return "❌ Ошибка подписки"

@@ -20,8 +20,6 @@ public class User {
 
     private String username;
 
-    private int balance = 0;
-
     private boolean activeSubscription = false;
 
     private LocalDateTime subscriptionEnd;
