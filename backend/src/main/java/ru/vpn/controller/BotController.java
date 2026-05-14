@@ -1,6 +1,7 @@
 package ru.vpn.controller;
 
 import lombok.Data;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.vpn.model.Tariff;
 import ru.vpn.model.User;
@@ -9,6 +10,7 @@ import ru.vpn.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -53,8 +55,16 @@ public class BotController {
     }
 
     @GetMapping("/users/{telegramId}")
-    public User getUser(@PathVariable Long telegramId) {
-        return userRepo.findByTelegramId(telegramId);
+    public ResponseEntity<?> getUser(@PathVariable Long telegramId) {
+
+        User user = userRepo.findByTelegramId(telegramId);
+
+        if (user == null) {
+            return ResponseEntity.status(404)
+                    .body(Map.of("error", "User not found"));
+        }
+
+        return ResponseEntity.ok(user);
     }
 
     @Data
