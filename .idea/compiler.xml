@@ -14,9 +14,9 @@
       <module name="backend" target="21" />
       <module name="backend.main" target="21" />
       <module name="backend.test" target="21" />
-      <module name="vpn-backend" target="21" />
-      <module name="vpn-backend.main" target="21" />
-      <module name="vpn-backend.test" target="21" />
+      <module name="vpn-backend" target="17" />
+      <module name="vpn-backend.main" target="17" />
+      <module name="vpn-backend.test" target="17" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">

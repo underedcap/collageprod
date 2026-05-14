@@ -1,67 +1,72 @@
 package ru.vpn.controller;
 
-import lombok.Data;
 import org.springframework.web.bind.annotation.*;
-import ru.vpn.model.Tariff;
 import ru.vpn.model.User;
-import ru.vpn.repository.TariffRepository;
 import ru.vpn.repository.UserRepository;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
 public class BotController {
 
     private final UserRepository userRepo;
-    private final TariffRepository tariffRepo;
 
-    public BotController(UserRepository userRepo, TariffRepository tariffRepo) {
+    public BotController(UserRepository userRepo) {
         this.userRepo = userRepo;
-        this.tariffRepo = tariffRepo;
-    }
-
-    // Список тарифов
-    @GetMapping("/tariffs")
-    public List<Tariff> getTariffs() {
-        return tariffRepo.findAll();
-    }
-
-    // Создание или обновление пользователя и подписки
-    @PostMapping("/users/subscribe")
-    public String subscribeUser(@RequestBody SubscribeRequest req) {
-        User user = userRepo.findByTelegramId(req.getTelegramId());
-        if (user == null) {
-            user = User.builder()
-                    .telegramId(req.getTelegramId())
-                    .username(req.getUsername())
-                    .activeSubscription(true)
-                    .subscriptionEnd(LocalDateTime.now().plusDays(req.getDurationDays()))
-                    .build();
-        } else {
-            // обновляем подписку
-            user.setActiveSubscription(true);
-            user.setSubscriptionEnd(LocalDateTime.now().plusDays(req.getDurationDays()));
-        }
-        userRepo.save(user);
-
-        // генерируем ссылку на оплату (заглушка)
-        String paymentLink = "https://payment.fake/checkout?user=" + user.getTelegramId() + "&tariff=" + req.getTariffName();
-
-        return paymentLink;
     }
 
     @GetMapping("/users/{telegramId}")
-    public User getUser(@PathVariable Long telegramId) {
-        return userRepo.findByTelegramId(telegramId);
+    public Map<String, Object> getUser(@PathVariable Long telegramId) {
+        User user = userRepo.findByTelegramId(telegramId);
+
+        if (user == null) {
+            user = User.builder()
+                    .telegramId(telegramId)
+                    .activeSubscription(null)
+                    .cashback(0)
+                    .build();
+
+            userRepo.save(user);
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("activeSubscription", user.getActiveSubscription());
+        response.put("subscriptionEnd", user.getSubscriptionEnd());
+        response.put("cashback", user.getCashback());
+
+        return response;
     }
 
-    @Data
-    public static class SubscribeRequest {
+    @PostMapping("/users/activate")
+    public String activateSubscription(@RequestBody ActivateRequest request) {
+        User user = userRepo.findByTelegramId(request.getTelegramId());
+
+        if (user == null) {
+            user = User.builder()
+                    .telegramId(request.getTelegramId())
+                    .username(request.getUsername())
+                    .cashback(0)
+                    .build();
+        }
+
+        user.setActiveSubscription(true);
+        user.setSubscriptionEnd(LocalDateTime.now().plusMonths(1));
+
+        userRepo.save(user);
+
+        return "ok";
+    }
+
+    public static class ActivateRequest {
         private Long telegramId;
         private String username;
-        private String tariffName;
-        private int durationDays;
+
+        public Long getTelegramId() { return telegramId; }
+        public void setTelegramId(Long telegramId) { this.telegramId = telegramId; }
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
     }
 }

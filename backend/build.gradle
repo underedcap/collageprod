@@ -8,7 +8,7 @@ group = 'com.vpn'
 version = '1.0'
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_17
 }
 
 repositories {
@@ -18,12 +18,8 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-
-    // SQLite
-    implementation 'org.xerial:sqlite-jdbc:3.42.0.0'
-
+    runtimeOnly 'com.mysql:mysql-connector-j'
     implementation 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }

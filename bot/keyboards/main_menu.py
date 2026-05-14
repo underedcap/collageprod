@@ -1,11 +1,24 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-
-def main_menu_kb():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🌍 VPN 8+ стран")],
-            [KeyboardButton(text="🇷🇺 Белые списки РФ")],
+main_menu = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="⚡ Купить подписку",
+                callback_data="buy"
+            )
         ],
-        resize_keyboard=True
-    )
+        [
+            InlineKeyboardButton(
+                text="👑 Кабинет",
+                callback_data="profile"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="🛠 Поддержка",
+                callback_data="support"
+            )
+        ]
+    ]
+)

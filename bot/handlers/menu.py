@@ -1,27 +1,21 @@
 from aiogram import Router, F
-from aiogram.types import Message
-from request import subscribe_user
+from aiogram.types import CallbackQuery
+
+from bot.terms.offer import PUBLIC_OFFER
+from bot.terms.privacy import PRIVACY_POLICY
 
 router = Router()
 
+@router.callback_query(F.data == "show_terms")
+async def show_terms(callback: CallbackQuery):
 
-@router.message(F.text == "🌍 VPN 8+ стран")
-async def vpn_8plus(message: Message):
-    link = await subscribe_user(
-        telegram_id=message.from_user.id,
-        username=message.from_user.username,
-        tariff_name="VPN 8+ стран",
-        duration_days=30
+    text = (
+        "📄 Политика и условия использования\n\n"
+        f"{PUBLIC_OFFER}\n\n"
+        f"{PRIVACY_POLICY}"
     )
-    await message.answer(f"🌍 Ссылка на оплату VPN 8+ стран:\n🔗 {link}")
 
-
-@router.message(F.text == "🇷🇺 Белые списки РФ")
-async def vpn_white_russia(message: Message):
-    link = await subscribe_user(
-        telegram_id=message.from_user.id,
-        username=message.from_user.username,
-        tariff_name="Белые списки РФ",
-        duration_days=30
+    await callback.message.edit_text(
+        text,
+        reply_markup=None
     )
-    await message.answer(f"🇷🇺 Ссылка на оплату Белые списки РФ:\n🔗 {link}")
