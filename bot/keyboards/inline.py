@@ -3,6 +3,15 @@ from aiogram.types import (
     InlineKeyboardButton
 )
 
+BOT_USERNAME = "InsightDlC_Vpn_bot"
+BOT_URL = f"https://t.me/{BOT_USERNAME}"
+
+OFFER_URL = f"{BOT_URL}?start=offer"
+REFUND_URL = f"{BOT_URL}?start=refund"
+PRIVACY_URL = f"{BOT_URL}?start=privacy"
+
+PAYMENT_URL = "https://pay.example.com/insight-vpn-demo-149"
+
 main_menu_kb = InlineKeyboardMarkup(
     inline_keyboard=[
         [
@@ -34,6 +43,20 @@ buy_menu_kb = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(
+                text="Оферта",
+                url=OFFER_URL
+            ),
+            InlineKeyboardButton(
+                text="Возврат",
+                url=REFUND_URL
+            ),
+            InlineKeyboardButton(
+                text="Privacy",
+                url=PRIVACY_URL
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 text="Назад",
                 callback_data="back_main"
             )
@@ -46,6 +69,12 @@ payment_kb = InlineKeyboardMarkup(
         [
             InlineKeyboardButton(
                 text="Перейти к оплате",
+                url=PAYMENT_URL
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="✅ Я оплатил",
                 callback_data="fake_success_payment"
             )
         ],

@@ -1,6 +1,7 @@
 import aiohttp
+from config import BACKEND_URL
 
-BASE_URL = "http://localhost:8080"
+BASE_URL = BACKEND_URL
 
 
 async def get_user(telegram_id: int):
@@ -26,7 +27,8 @@ async def activate_subscription(
         "telegramId": telegram_id,
         "username": username,
         "tariffName": "1 Month",
-        "durationDays": 30
+        "durationDays": 30,
+        "price": 149
     }
 
     async with aiohttp.ClientSession() as session:
@@ -36,4 +38,10 @@ async def activate_subscription(
                 json=payload
         ) as response:
 
-            return await response.json()
+            if response.status >= 400:
+                raise RuntimeError(await response.text())
+
+            if response.content_type == "application/json":
+                return await response.json()
+
+            return {"status": await response.text()}

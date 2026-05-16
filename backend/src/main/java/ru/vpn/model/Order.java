@@ -23,7 +23,9 @@ public class Order {
 
     private String status;
 
+    @Builder.Default
     private LocalDateTime startDate = LocalDateTime.now();
+
     private LocalDateTime endDate;
 
 }

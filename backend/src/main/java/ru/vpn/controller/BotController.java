@@ -1,10 +1,15 @@
 package ru.vpn.controller;
 
 import org.springframework.web.bind.annotation.*;
+import ru.vpn.model.Order;
+import ru.vpn.model.Tariff;
 import ru.vpn.model.User;
+import ru.vpn.repository.OrderRepository;
+import ru.vpn.repository.TariffRepository;
 import ru.vpn.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,10 +17,21 @@ import java.util.Map;
 @RequestMapping("/api")
 public class BotController {
 
-    private final UserRepository userRepo;
+    private static final DateTimeFormatter SUBSCRIPTION_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("dd:MM:yyyy");
 
-    public BotController(UserRepository userRepo) {
+    private final UserRepository userRepo;
+    private final TariffRepository tariffRepo;
+    private final OrderRepository orderRepo;
+
+    public BotController(
+            UserRepository userRepo,
+            TariffRepository tariffRepo,
+            OrderRepository orderRepo
+    ) {
         this.userRepo = userRepo;
+        this.tariffRepo = tariffRepo;
+        this.orderRepo = orderRepo;
     }
 
     @GetMapping("/users/{telegramId}")
@@ -25,23 +41,19 @@ public class BotController {
         if (user == null) {
             user = User.builder()
                     .telegramId(telegramId)
-                    .activeSubscription(null)
+                    .activeSubscription(false)
                     .cashback(0)
                     .build();
 
-            userRepo.save(user);
+            user = userRepo.save(user);
         }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("activeSubscription", user.getActiveSubscription());
-        response.put("subscriptionEnd", user.getSubscriptionEnd());
-        response.put("cashback", user.getCashback());
-
-        return response;
+        deactivateIfExpired(user);
+        return buildUserResponse(user);
     }
 
-    @PostMapping("/users/activate")
-    public String activateSubscription(@RequestBody ActivateRequest request) {
+    @PostMapping({"/users/activate", "/users/subscribe"})
+    public Map<String, Object> activateSubscription(@RequestBody ActivateRequest request) {
         User user = userRepo.findByTelegramId(request.getTelegramId());
 
         if (user == null) {
@@ -50,23 +62,137 @@ public class BotController {
                     .username(request.getUsername())
                     .cashback(0)
                     .build();
+        } else if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            user.setUsername(request.getUsername());
         }
 
+        int durationDays = request.getDurationDays() == null
+                ? 30
+                : request.getDurationDays();
+
+        String tariffName = request.getTariffName() == null || request.getTariffName().isBlank()
+                ? "1 Month"
+                : request.getTariffName();
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startFrom = Boolean.TRUE.equals(user.getActiveSubscription())
+                && user.getSubscriptionEnd() != null
+                && user.getSubscriptionEnd().isAfter(now)
+                ? user.getSubscriptionEnd()
+                : now;
+        LocalDateTime subscriptionEnd = startFrom.plusDays(durationDays);
+
         user.setActiveSubscription(true);
-        user.setSubscriptionEnd(LocalDateTime.now().plusMonths(1));
+        user.setSubscriptionEnd(subscriptionEnd);
+        user = userRepo.save(user);
 
+        Tariff tariff = findOrCreateTariff(tariffName, durationDays, request.getPrice());
+
+        orderRepo.save(Order.builder()
+                .userId(user.getId())
+                .tariffId(tariff.getId())
+                .status("PAID")
+                .startDate(now)
+                .endDate(subscriptionEnd)
+                .build());
+
+        Map<String, Object> response = buildUserResponse(user);
+        response.put("status", "ok");
+        response.put("orderStatus", "PAID");
+
+        return response;
+    }
+
+    private Tariff findOrCreateTariff(String name, int durationDays, Integer price) {
+        Tariff tariff = tariffRepo.findByName(name);
+
+        if (tariff != null) {
+            return tariff;
+        }
+
+        return tariffRepo.save(Tariff.builder()
+                .name(name)
+                .price(price == null ? 149 : price)
+                .durationDays(durationDays)
+                .build());
+    }
+
+    private void deactivateIfExpired(User user) {
+        if (!Boolean.TRUE.equals(user.getActiveSubscription())) {
+            return;
+        }
+
+        if (user.getSubscriptionEnd() == null || user.getSubscriptionEnd().isAfter(LocalDateTime.now())) {
+            return;
+        }
+
+        user.setActiveSubscription(false);
         userRepo.save(user);
+    }
 
-        return "ok";
+    private Map<String, Object> buildUserResponse(User user) {
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("activeSubscription", Boolean.TRUE.equals(user.getActiveSubscription()));
+        response.put("subscriptionEnd", formatSubscriptionEnd(user.getSubscriptionEnd()));
+        response.put("cashback", user.getCashback() == null ? 0 : user.getCashback());
+
+        return response;
+    }
+
+    private String formatSubscriptionEnd(LocalDateTime subscriptionEnd) {
+        if (subscriptionEnd == null) {
+            return null;
+        }
+
+        return subscriptionEnd.format(SUBSCRIPTION_DATE_FORMAT);
     }
 
     public static class ActivateRequest {
         private Long telegramId;
         private String username;
+        private String tariffName;
+        private Integer durationDays;
+        private Integer price;
 
-        public Long getTelegramId() { return telegramId; }
-        public void setTelegramId(Long telegramId) { this.telegramId = telegramId; }
-        public String getUsername() { return username; }
-        public void setUsername(String username) { this.username = username; }
+        public Long getTelegramId() {
+            return telegramId;
+        }
+
+        public void setTelegramId(Long telegramId) {
+            this.telegramId = telegramId;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getTariffName() {
+            return tariffName;
+        }
+
+        public void setTariffName(String tariffName) {
+            this.tariffName = tariffName;
+        }
+
+        public Integer getDurationDays() {
+            return durationDays;
+        }
+
+        public void setDurationDays(Integer durationDays) {
+            this.durationDays = durationDays;
+        }
+
+        public Integer getPrice() {
+            return price;
+        }
+
+        public void setPrice(Integer price) {
+            this.price = price;
+        }
     }
 }
