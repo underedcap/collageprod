@@ -43,16 +43,19 @@ buy_menu_kb = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(
-                text="Оферта",
-                url=OFFER_URL
-            ),
+                text="Назад",
+                callback_data="back_main"
+            )
+        ]
+    ]
+)
+
+profile_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
             InlineKeyboardButton(
-                text="Возврат",
-                url=REFUND_URL
-            ),
-            InlineKeyboardButton(
-                text="Privacy",
-                url=PRIVACY_URL
+                text="⚡ Купить подписку",
+                callback_data="buy_vpn"
             )
         ],
         [
@@ -98,13 +101,3 @@ back_main_kb = InlineKeyboardMarkup(
     ]
 )
 
-policy_kb = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="Назад",
-                callback_data="back_main"
-            )
-        ]
-    ]
-)

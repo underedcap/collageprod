@@ -6,6 +6,7 @@ from keyboards.inline import (
     main_menu_kb,
     buy_menu_kb,
     back_main_kb,
+    profile_kb,
     payment_kb,
     OFFER_URL,
     REFUND_URL,
@@ -62,6 +63,7 @@ async def start_handler(message: Message):
 
 @router.callback_query(F.data == "profile")
 async def profile(callback: CallbackQuery):
+    await callback.answer()
     user = await get_user(callback.from_user.id)
     if user and user.get("activeSubscription"):
         text = (
@@ -72,10 +74,11 @@ async def profile(callback: CallbackQuery):
         )
     else:
         text = CABINET_TEXT_NO_SUB
-    await callback.message.answer(text, reply_markup=back_main_kb, parse_mode="HTML")
+    await callback.message.answer(text, reply_markup=profile_kb, parse_mode="HTML")
 
 @router.callback_query(F.data == "back_main")
 async def back_main(callback: CallbackQuery):
+    await callback.answer()
     banner = FSInputFile("assets/banner.jpg")
     await callback.message.delete()
     await callback.message.answer_photo(
@@ -87,21 +90,36 @@ async def back_main(callback: CallbackQuery):
 
 @router.callback_query(F.data == "buy_vpn")
 async def buy_vpn(callback: CallbackQuery):
+    await callback.answer()
+    caption = (
+        "Вы выбрали: <b>1 Месяц</b>\n"
+        "Стоимость: <b><tg-spoiler>149 ₽</tg-spoiler></b> <s>349 ₽</s>\n\n"
+        "Переходя к оплате, вы соглашаетесь с "
+        f'<a href="{OFFER_URL}">условиями пользования</a>, '
+        f'<a href="{REFUND_URL}">политикой возвратов</a> и '
+        f'<a href="{PRIVACY_URL}">политикой конфиденциальности</a>.'
+    )
+
+    if callback.message.caption is None:
+        banner = FSInputFile("assets/banner.jpg")
+        await callback.message.delete()
+        await callback.message.answer_photo(
+            photo=banner,
+            caption=caption,
+            parse_mode="HTML",
+            reply_markup=buy_menu_kb
+        )
+        return
+
     await callback.message.edit_caption(
-        caption=(
-            "Вы выбрали: <b>1 Месяц</b>\n"
-            "Стоимость: <b><tg-spoiler>149 ₽</tg-spoiler></b> <s>349 ₽</s>\n\n"
-            "Переходя к оплате, вы соглашаетесь с "
-            f'<a href="{OFFER_URL}">условиями пользования</a>, '
-            f'<a href="{REFUND_URL}">политикой возвратов</a> и '
-            f'<a href="{PRIVACY_URL}">политикой конфиденциальности</a>.'
-        ),
+        caption=caption,
         parse_mode="HTML",
         reply_markup=buy_menu_kb
     )
 
 @router.callback_query(F.data == "pay")
 async def payment(callback: CallbackQuery):
+    await callback.answer()
     await callback.message.edit_caption(
         caption=(
             "🌍 Счёт на оплату создан.\n"
@@ -127,6 +145,7 @@ async def fake_payment(callback: CallbackQuery):
         )
         return
 
+    await callback.answer()
     subscription_end = result.get("subscriptionEnd", "30 дней")
 
     await callback.message.edit_caption(
