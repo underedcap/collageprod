@@ -1,0 +1,11 @@
+.env
+.idea/
+
+__pycache__/
+*.py[cod]
+
+backend/.gradle/
+backend/build/
+
+.venv/
+venv/
