@@ -43,6 +43,20 @@ buy_menu_kb = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(
+                text="Оферта",
+                callback_data="policy_offer"
+            ),
+            InlineKeyboardButton(
+                text="Возврат",
+                callback_data="policy_refund"
+            ),
+            InlineKeyboardButton(
+                text="Privacy",
+                callback_data="policy_privacy"
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 text="Назад",
                 callback_data="back_main"
             )
@@ -67,18 +81,18 @@ profile_kb = InlineKeyboardMarkup(
     ]
 )
 
-payment_kb = InlineKeyboardMarkup(
-    inline_keyboard=[
+def payment_kb(order_id: int, payment_url: str = PAYMENT_URL) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
                 text="Перейти к оплате",
-                url=PAYMENT_URL
+                url=payment_url
             )
         ],
         [
             InlineKeyboardButton(
                 text="✅ Я оплатил",
-                callback_data="fake_success_payment"
+                callback_data=f"fake_success_payment:{order_id}"
             )
         ],
         [
@@ -87,8 +101,7 @@ payment_kb = InlineKeyboardMarkup(
                 callback_data="back_main"
             )
         ]
-    ]
-)
+    ])
 
 back_main_kb = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -101,3 +114,13 @@ back_main_kb = InlineKeyboardMarkup(
     ]
 )
 
+close_policy_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="Назад",
+                callback_data="close_policy"
+            )
+        ]
+    ]
+)

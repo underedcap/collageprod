@@ -6,6 +6,7 @@ from keyboards.inline import (
     main_menu_kb,
     buy_menu_kb,
     back_main_kb,
+    close_policy_kb,
     profile_kb,
     payment_kb,
     OFFER_URL,
@@ -13,7 +14,7 @@ from keyboards.inline import (
     PRIVACY_URL,
     PAYMENT_URL,
 )
-from api.backend import get_user, activate_subscription
+from api.backend import get_user, activate_subscription, create_payment_order
 from terms.offer import PUBLIC_OFFER
 from terms.privacy import PRIVACY_POLICY
 from terms.refund import REFUND_POLICY
@@ -39,13 +40,13 @@ CABINET_TEXT_ACTIVE = (
 async def deep_links(message: Message, command: CommandObject):
     args = command.args
     if args == "offer":
-        await message.answer(PUBLIC_OFFER, reply_markup=back_main_kb)
+        await message.answer(PUBLIC_OFFER, reply_markup=close_policy_kb)
         return
     if args == "refund":
-        await message.answer(REFUND_POLICY, reply_markup=back_main_kb)
+        await message.answer(REFUND_POLICY, reply_markup=close_policy_kb)
         return
     if args == "privacy":
-        await message.answer(PRIVACY_POLICY, reply_markup=back_main_kb)
+        await message.answer(PRIVACY_POLICY, reply_markup=close_policy_kb)
         return
 
     await start_handler(message)
@@ -117,26 +118,70 @@ async def buy_vpn(callback: CallbackQuery):
         reply_markup=buy_menu_kb
     )
 
+@router.callback_query(F.data == "policy_offer")
+async def show_offer_policy(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.answer(PUBLIC_OFFER, reply_markup=close_policy_kb)
+
+@router.callback_query(F.data == "policy_refund")
+async def show_refund_policy(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.answer(REFUND_POLICY, reply_markup=close_policy_kb)
+
+@router.callback_query(F.data == "policy_privacy")
+async def show_privacy_policy(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.answer(PRIVACY_POLICY, reply_markup=close_policy_kb)
+
+@router.callback_query(F.data == "close_policy")
+async def close_policy(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.delete()
+
 @router.callback_query(F.data == "pay")
 async def payment(callback: CallbackQuery):
+    try:
+        order = await create_payment_order(
+            telegram_id=callback.from_user.id,
+            username=callback.from_user.username or ""
+        )
+    except Exception:
+        await callback.answer(
+            "Не получилось создать счёт. Попробуйте позже или напишите в поддержку.",
+            show_alert=True
+        )
+        return
+
     await callback.answer()
+    order_id = order["orderId"]
+    payment_url = order.get("paymentUrl", PAYMENT_URL)
+
     await callback.message.edit_caption(
         caption=(
             "🌍 Счёт на оплату создан.\n"
             "Подписка: 1 Месяц\n"
             "Стоимость: 149 ₽\n\n"
-            f"Ссылка на оплату:\n{PAYMENT_URL}\n\n"
+            f"Номер заказа: <code>{order_id}</code>\n"
+            f"Ссылка на оплату:\n{payment_url}\n\n"
             "После оплаты нажмите кнопку «Я оплатил»."
         ),
-        reply_markup=payment_kb
+        parse_mode="HTML",
+        reply_markup=payment_kb(order_id, payment_url)
     )
 
 @router.callback_query(F.data == "fake_success_payment")
+@router.callback_query(F.data.startswith("fake_success_payment:"))
 async def fake_payment(callback: CallbackQuery):
+    order_id = None
+
+    if ":" in callback.data:
+        order_id = int(callback.data.split(":", 1)[1])
+
     try:
         result = await activate_subscription(
             telegram_id=callback.from_user.id,
-            username=callback.from_user.username or ""
+            username=callback.from_user.username or "",
+            order_id=order_id
         )
     except Exception:
         await callback.answer(

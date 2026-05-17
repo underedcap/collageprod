@@ -21,6 +21,16 @@ public class Order {
 
     private Long tariffId;
 
+    private Long telegramId;
+
+    private String username;
+
+    private String tariffName;
+
+    private Integer price;
+
+    private String paymentUrl;
+
     private String status;
 
     @Builder.Default
@@ -28,4 +38,5 @@ public class Order {
 
     private LocalDateTime endDate;
 
+    private LocalDateTime paidAt;
 }

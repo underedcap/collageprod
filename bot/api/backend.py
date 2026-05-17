@@ -20,7 +20,8 @@ async def get_user(telegram_id: int):
 
 async def activate_subscription(
         telegram_id: int,
-        username: str
+        username: str,
+        order_id: int | None = None
 ):
 
     payload = {
@@ -30,6 +31,9 @@ async def activate_subscription(
         "durationDays": 30,
         "price": 149
     }
+
+    if order_id is not None:
+        payload["orderId"] = order_id
 
     async with aiohttp.ClientSession() as session:
 
@@ -45,3 +49,28 @@ async def activate_subscription(
                 return await response.json()
 
             return {"status": await response.text()}
+
+
+async def create_payment_order(
+        telegram_id: int,
+        username: str
+):
+    payload = {
+        "telegramId": telegram_id,
+        "username": username,
+        "tariffName": "1 Month",
+        "durationDays": 30,
+        "price": 149
+    }
+
+    async with aiohttp.ClientSession() as session:
+
+        async with session.post(
+                f"{BASE_URL}/api/orders/create",
+                json=payload
+        ) as response:
+
+            if response.status >= 400:
+                raise RuntimeError(await response.text())
+
+            return await response.json()

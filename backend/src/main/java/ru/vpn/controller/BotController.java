@@ -11,6 +11,7 @@ import ru.vpn.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -19,6 +20,7 @@ public class BotController {
 
     private static final DateTimeFormatter SUBSCRIPTION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("dd:MM:yyyy");
+    private static final String DEMO_PAYMENT_URL = "https://pay.example.com/insight-vpn-demo-149";
 
     private final UserRepository userRepo;
     private final TariffRepository tariffRepo;
@@ -54,6 +56,13 @@ public class BotController {
 
     @PostMapping({"/users/activate", "/users/subscribe"})
     public Map<String, Object> activateSubscription(@RequestBody ActivateRequest request) {
+        Order order = null;
+
+        if (request.getOrderId() != null) {
+            order = orderRepo.findById(request.getOrderId())
+                    .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        }
+
         User user = userRepo.findByTelegramId(request.getTelegramId());
 
         if (user == null) {
@@ -88,19 +97,80 @@ public class BotController {
 
         Tariff tariff = findOrCreateTariff(tariffName, durationDays, request.getPrice());
 
-        orderRepo.save(Order.builder()
-                .userId(user.getId())
-                .tariffId(tariff.getId())
-                .status("PAID")
-                .startDate(now)
-                .endDate(subscriptionEnd)
-                .build());
+        if (order == null) {
+            order = Order.builder()
+                    .startDate(now)
+                    .build();
+        }
+
+        order.setUserId(user.getId());
+        order.setTariffId(tariff.getId());
+        order.setTelegramId(user.getTelegramId());
+        order.setUsername(user.getUsername());
+        order.setTariffName(tariff.getName());
+        order.setPrice(tariff.getPrice());
+        order.setPaymentUrl(order.getPaymentUrl() == null ? DEMO_PAYMENT_URL : order.getPaymentUrl());
+        order.setStatus("PAID");
+        order.setEndDate(subscriptionEnd);
+        order.setPaidAt(now);
+        orderRepo.save(order);
 
         Map<String, Object> response = buildUserResponse(user);
         response.put("status", "ok");
         response.put("orderStatus", "PAID");
+        response.put("orderId", order.getId());
 
         return response;
+    }
+
+    @PostMapping("/orders/create")
+    public Map<String, Object> createPaymentOrder(@RequestBody ActivateRequest request) {
+        User user = userRepo.findByTelegramId(request.getTelegramId());
+
+        if (user == null) {
+            user = User.builder()
+                    .telegramId(request.getTelegramId())
+                    .username(request.getUsername())
+                    .activeSubscription(false)
+                    .cashback(0)
+                    .build();
+        } else if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            user.setUsername(request.getUsername());
+        }
+
+        user = userRepo.save(user);
+
+        int durationDays = request.getDurationDays() == null ? 30 : request.getDurationDays();
+        String tariffName = request.getTariffName() == null || request.getTariffName().isBlank()
+                ? "1 Month"
+                : request.getTariffName();
+        Tariff tariff = findOrCreateTariff(tariffName, durationDays, request.getPrice());
+
+        Order order = orderRepo.save(Order.builder()
+                .userId(user.getId())
+                .tariffId(tariff.getId())
+                .telegramId(user.getTelegramId())
+                .username(user.getUsername())
+                .tariffName(tariff.getName())
+                .price(tariff.getPrice())
+                .paymentUrl(DEMO_PAYMENT_URL)
+                .status("PENDING")
+                .startDate(LocalDateTime.now())
+                .build());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("orderId", order.getId());
+        response.put("status", order.getStatus());
+        response.put("paymentUrl", order.getPaymentUrl());
+        response.put("tariffName", order.getTariffName());
+        response.put("price", order.getPrice());
+
+        return response;
+    }
+
+    @GetMapping("/orders/recent")
+    public List<Order> getRecentOrders() {
+        return orderRepo.findTop25ByOrderByStartDateDesc();
     }
 
     private Tariff findOrCreateTariff(String name, int durationDays, Integer price) {
@@ -154,6 +224,7 @@ public class BotController {
         private String tariffName;
         private Integer durationDays;
         private Integer price;
+        private Long orderId;
 
         public Long getTelegramId() {
             return telegramId;
@@ -193,6 +264,14 @@ public class BotController {
 
         public void setPrice(Integer price) {
             this.price = price;
+        }
+
+        public Long getOrderId() {
+            return orderId;
+        }
+
+        public void setOrderId(Long orderId) {
+            this.orderId = orderId;
         }
     }
 }
