@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from aiogram import Router, F
 from aiogram.filters import CommandStart, CommandObject
 from aiogram.types import Message, CallbackQuery, FSInputFile
@@ -13,6 +15,7 @@ from keyboards.inline import (
     REFUND_URL,
     PRIVACY_URL,
     PAYMENT_URL,
+    CRYPTO_ADDRESS,
 )
 from api.backend import get_user, activate_subscription, create_payment_order
 from terms.offer import PUBLIC_OFFER
@@ -20,7 +23,12 @@ from terms.privacy import PRIVACY_POLICY
 from terms.refund import REFUND_POLICY
 
 router = Router()
+POLICY_MESSAGES: dict[int, list[int]] = {}
 
+BANNER_PATHS = (
+    Path(__file__).resolve().parent.parent / "assets" / "banner.jpg",
+    Path(__file__).resolve().parent.parent / "assets" / "banner.png",
+)
 WELCOME_TEXT = "Привет! Возвращаемся в нормальный интернет без цензуры?"
 
 CABINET_TEXT_NO_SUB = (
@@ -36,24 +44,34 @@ CABINET_TEXT_ACTIVE = (
     "💸 Кэшбэк: 0₽"
 )
 
+def banner_file() -> FSInputFile:
+    for path in BANNER_PATHS:
+        if path.exists():
+            return FSInputFile(path)
+    expected = ", ".join(str(path) for path in BANNER_PATHS)
+    raise FileNotFoundError(f"Banner asset not found. Expected one of: {expected}")
+
 @router.message(CommandStart(deep_link=True))
 async def deep_links(message: Message, command: CommandObject):
     args = command.args
     if args == "offer":
-        await message.answer(PUBLIC_OFFER, reply_markup=close_policy_kb)
+        sent = await message.answer(PUBLIC_OFFER, reply_markup=close_policy_kb)
+        POLICY_MESSAGES.setdefault(message.chat.id, []).append(sent.message_id)
         return
     if args == "refund":
-        await message.answer(REFUND_POLICY, reply_markup=close_policy_kb)
+        sent = await message.answer(REFUND_POLICY, reply_markup=close_policy_kb)
+        POLICY_MESSAGES.setdefault(message.chat.id, []).append(sent.message_id)
         return
     if args == "privacy":
-        await message.answer(PRIVACY_POLICY, reply_markup=close_policy_kb)
+        sent = await message.answer(PRIVACY_POLICY, reply_markup=close_policy_kb)
+        POLICY_MESSAGES.setdefault(message.chat.id, []).append(sent.message_id)
         return
 
     await start_handler(message)
 
 @router.message(CommandStart())
 async def start_handler(message: Message):
-    banner = FSInputFile("assets/banner.jpg")
+    banner = banner_file()
     
     await message.answer_photo(
         photo=banner,
@@ -80,7 +98,7 @@ async def profile(callback: CallbackQuery):
 @router.callback_query(F.data == "back_main")
 async def back_main(callback: CallbackQuery):
     await callback.answer()
-    banner = FSInputFile("assets/banner.jpg")
+    banner = banner_file()
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=banner,
@@ -94,7 +112,7 @@ async def buy_vpn(callback: CallbackQuery):
     await callback.answer()
     caption = (
         "Вы выбрали: <b>1 Месяц</b>\n"
-        "Стоимость: <b><tg-spoiler>149 ₽</tg-spoiler></b> <s>349 ₽</s>\n\n"
+        "Стоимость: <b>149 ₽</b> <s>349 ₽</s>\n\n"
         "Переходя к оплате, вы соглашаетесь с "
         f'<a href="{OFFER_URL}">условиями пользования</a>, '
         f'<a href="{REFUND_URL}">политикой возвратов</a> и '
@@ -102,7 +120,7 @@ async def buy_vpn(callback: CallbackQuery):
     )
 
     if callback.message.caption is None:
-        banner = FSInputFile("assets/banner.jpg")
+        banner = banner_file()
         await callback.message.delete()
         await callback.message.answer_photo(
             photo=banner,
@@ -121,22 +139,33 @@ async def buy_vpn(callback: CallbackQuery):
 @router.callback_query(F.data == "policy_offer")
 async def show_offer_policy(callback: CallbackQuery):
     await callback.answer()
-    await callback.message.answer(PUBLIC_OFFER, reply_markup=close_policy_kb)
+    sent = await callback.message.answer(PUBLIC_OFFER, reply_markup=close_policy_kb)
+    POLICY_MESSAGES.setdefault(callback.message.chat.id, []).append(sent.message_id)
 
 @router.callback_query(F.data == "policy_refund")
 async def show_refund_policy(callback: CallbackQuery):
     await callback.answer()
-    await callback.message.answer(REFUND_POLICY, reply_markup=close_policy_kb)
+    sent = await callback.message.answer(REFUND_POLICY, reply_markup=close_policy_kb)
+    POLICY_MESSAGES.setdefault(callback.message.chat.id, []).append(sent.message_id)
 
 @router.callback_query(F.data == "policy_privacy")
 async def show_privacy_policy(callback: CallbackQuery):
     await callback.answer()
-    await callback.message.answer(PRIVACY_POLICY, reply_markup=close_policy_kb)
+    sent = await callback.message.answer(PRIVACY_POLICY, reply_markup=close_policy_kb)
+    POLICY_MESSAGES.setdefault(callback.message.chat.id, []).append(sent.message_id)
 
 @router.callback_query(F.data == "close_policy")
 async def close_policy(callback: CallbackQuery):
     await callback.answer()
-    await callback.message.delete()
+    chat_id = callback.message.chat.id
+    message_ids = POLICY_MESSAGES.pop(chat_id, [])
+    if callback.message.message_id not in message_ids:
+        message_ids.append(callback.message.message_id)
+    for message_id in message_ids:
+        try:
+            await callback.bot.delete_message(chat_id, message_id)
+        except Exception:
+            pass
 
 @router.callback_query(F.data == "pay")
 async def payment(callback: CallbackQuery):
@@ -158,15 +187,33 @@ async def payment(callback: CallbackQuery):
 
     await callback.message.edit_caption(
         caption=(
-            "🌍 Счёт на оплату создан.\n"
-            "Подписка: 1 Месяц\n"
-            "Стоимость: 149 ₽\n\n"
-            f"Номер заказа: <code>{order_id}</code>\n"
-            f"Ссылка на оплату:\n{payment_url}\n\n"
-            "После оплаты нажмите кнопку «Я оплатил»."
+            "💳 <b>Выберите способ оплаты</b>\n"
+            f"Заказ: <code>{order_id}</code>\n\n"
+            "Подписка: <b>1 Месяц</b>\n"
+            "К оплате: <b>149 ₽</b>\n\n"
+            "СБП: оплата по тестовой ссылке.\n"
+            "CryptoBot / USDT TRC20: адрес кошелька откроется по кнопке.\n\n"
+            "После оплаты нажмите <b>«Я оплатил»</b>."
         ),
         parse_mode="HTML",
         reply_markup=payment_kb(order_id, payment_url)
+    )
+
+@router.callback_query(F.data == "pay_crypto")
+async def show_crypto_payment(callback: CallbackQuery):
+    await callback.answer()
+    caption = callback.message.caption or ""
+    if CRYPTO_ADDRESS in caption:
+        return
+
+    await callback.message.edit_caption(
+        caption=(
+            f"{caption}\n\n"
+            "CryptoBot / USDT TRC20:\n"
+            f"<code>{CRYPTO_ADDRESS}</code>"
+        ),
+        parse_mode="HTML",
+        reply_markup=callback.message.reply_markup
     )
 
 @router.callback_query(F.data == "fake_success_payment")
