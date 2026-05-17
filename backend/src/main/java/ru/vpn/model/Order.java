@@ -31,6 +31,8 @@ public class Order {
 
     private String paymentUrl;
 
+    private String paymentMethod;
+
     private String status;
 
     @Builder.Default

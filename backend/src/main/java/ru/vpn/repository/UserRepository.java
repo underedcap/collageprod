@@ -9,5 +9,7 @@ import java.util.List;
 public interface UserRepository extends JpaRepository<User, Long> {
     User findByTelegramId(Long telegramId);
 
+    List<User> findByActiveSubscriptionTrue();
+
     List<User> findByActiveSubscriptionTrueAndSubscriptionEndBefore(LocalDateTime now);
 }

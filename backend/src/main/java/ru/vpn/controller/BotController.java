@@ -50,7 +50,7 @@ public class BotController {
             user = userRepo.save(user);
         }
 
-        deactivateIfExpired(user);
+        syncSubscriptionFromOrders(user);
         return buildUserResponse(user);
     }
 
@@ -110,6 +110,9 @@ public class BotController {
         order.setTariffName(tariff.getName());
         order.setPrice(tariff.getPrice());
         order.setPaymentUrl(order.getPaymentUrl() == null ? DEMO_PAYMENT_URL : order.getPaymentUrl());
+        if (order.getPaymentMethod() == null || order.getPaymentMethod().isBlank()) {
+            order.setPaymentMethod(normalizePaymentMethod(request.getPaymentMethod()));
+        }
         order.setStatus("PAID");
         order.setEndDate(subscriptionEnd);
         order.setPaidAt(now);
@@ -154,6 +157,7 @@ public class BotController {
                 .tariffName(tariff.getName())
                 .price(tariff.getPrice())
                 .paymentUrl(DEMO_PAYMENT_URL)
+                .paymentMethod(normalizePaymentMethod(request.getPaymentMethod()))
                 .status("PENDING")
                 .startDate(LocalDateTime.now())
                 .build());
@@ -162,6 +166,7 @@ public class BotController {
         response.put("orderId", order.getId());
         response.put("status", order.getStatus());
         response.put("paymentUrl", order.getPaymentUrl());
+        response.put("paymentMethod", order.getPaymentMethod());
         response.put("tariffName", order.getTariffName());
         response.put("price", order.getPrice());
 
@@ -200,6 +205,39 @@ public class BotController {
         userRepo.save(user);
     }
 
+    private void syncSubscriptionFromOrders(User user) {
+        Order latestPaidOrder = orderRepo.findTopByTelegramIdAndStatusOrderByEndDateDesc(
+                user.getTelegramId(),
+                "PAID"
+        );
+
+        if (latestPaidOrder == null || latestPaidOrder.getEndDate() == null) {
+            deactivateIfExpired(user);
+            return;
+        }
+
+        boolean isActive = latestPaidOrder.getEndDate().isAfter(LocalDateTime.now());
+        boolean changed = !isActive == Boolean.TRUE.equals(user.getActiveSubscription())
+                || user.getSubscriptionEnd() == null
+                || !user.getSubscriptionEnd().equals(latestPaidOrder.getEndDate());
+
+        if (!changed) {
+            return;
+        }
+
+        user.setActiveSubscription(isActive);
+        user.setSubscriptionEnd(latestPaidOrder.getEndDate());
+        userRepo.save(user);
+    }
+
+    private String normalizePaymentMethod(String paymentMethod) {
+        if (paymentMethod == null || paymentMethod.isBlank()) {
+            return "SBP";
+        }
+
+        return paymentMethod.trim().toUpperCase();
+    }
+
     private Map<String, Object> buildUserResponse(User user) {
         Map<String, Object> response = new HashMap<>();
 
@@ -225,6 +263,7 @@ public class BotController {
         private Integer durationDays;
         private Integer price;
         private Long orderId;
+        private String paymentMethod;
 
         public Long getTelegramId() {
             return telegramId;
@@ -272,6 +311,14 @@ public class BotController {
 
         public void setOrderId(Long orderId) {
             this.orderId = orderId;
+        }
+
+        public String getPaymentMethod() {
+            return paymentMethod;
+        }
+
+        public void setPaymentMethod(String paymentMethod) {
+            this.paymentMethod = paymentMethod;
         }
     }
 }
