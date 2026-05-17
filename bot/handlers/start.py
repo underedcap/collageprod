@@ -21,6 +21,7 @@ from terms.refund import REFUND_POLICY
 
 router = Router()
 
+BANNER_PATH = "assets/banner.png"
 WELCOME_TEXT = "Привет! Возвращаемся в нормальный интернет без цензуры?"
 
 CABINET_TEXT_NO_SUB = (
@@ -53,7 +54,7 @@ async def deep_links(message: Message, command: CommandObject):
 
 @router.message(CommandStart())
 async def start_handler(message: Message):
-    banner = FSInputFile("assets/banner.jpg")
+    banner = FSInputFile(BANNER_PATH)
     
     await message.answer_photo(
         photo=banner,
@@ -80,7 +81,7 @@ async def profile(callback: CallbackQuery):
 @router.callback_query(F.data == "back_main")
 async def back_main(callback: CallbackQuery):
     await callback.answer()
-    banner = FSInputFile("assets/banner.jpg")
+    banner = FSInputFile(BANNER_PATH)
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=banner,
@@ -102,7 +103,7 @@ async def buy_vpn(callback: CallbackQuery):
     )
 
     if callback.message.caption is None:
-        banner = FSInputFile("assets/banner.jpg")
+        banner = FSInputFile(BANNER_PATH)
         await callback.message.delete()
         await callback.message.answer_photo(
             photo=banner,
